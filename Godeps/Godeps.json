@@ -1,5 +1,5 @@
 {
-	"ImportPath": "github.com/wndhydrnt/mesos-stats",
+	"ImportPath": "github.com/wndhydrnt/mesos-task-exporter",
 	"GoVersion": "go1.4.1",
 	"Deps": [
 		{

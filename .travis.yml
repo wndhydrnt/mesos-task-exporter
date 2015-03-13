@@ -2,3 +2,16 @@ sudo: false
 language: go
 go:
 - 1.4.2
+script: make test
+before_deploy: make release
+deploy:
+  provider: releases
+  api_key:
+    secure: l6p0evBmnwgi2OlUEEeZ3aCUGbze2cSixsRac8F7k1gKCNF0u2yTGNNiqICBHm3EVi465RDhdtl1QCiCTYHEYT0znjYZc5xUAj+lN+3VJS+7V17ZbHfY8lrmcPRh9rLZFv/jcDGj1j8b2r1FUvfJc1O9wrZjYtiZv+Gn78hjUBg=
+  file:
+    - mesos-task-exporter_linux_386
+    - mesos-task-exporter_linux_amd64
+  on:
+    repo: wndhydrnt/mesos-task-exporter
+    tags: true
+after_deploy: make clean
