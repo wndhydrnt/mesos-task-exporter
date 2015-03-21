@@ -202,6 +202,11 @@ func slavePoller(c *http.Client, conf *Config, frameworkRegistry *frameworkRegis
 				frameworkName = framework.Name
 				taskName = findTaskName(item.ExecutorId, framework)
 
+				if taskName == "" {
+					log.Debugf("Could not find name of task of executor '%s' - skipping", item.ExecutorId)
+					continue
+				}
+
 				log.Debugf("Found new task '%s'", item.ExecutorId)
 
 				cpusSystemUsage = float64(0)
