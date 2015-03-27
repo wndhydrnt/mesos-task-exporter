@@ -43,6 +43,14 @@
 			"ImportPath": "github.com/prometheus/client_model/go",
 			"Comment": "model-0.0.2-12-gfa8ad6f",
 			"Rev": "fa8ad6fec33561be4280a8f0514318c79d7f6cb6"
+		},
+		{
+			"ImportPath": "github.com/stretchr/testify/assert",
+			"Rev": "33a31e5dbed8302d5ab7e6d12b416e95c2c4ebc0"
+		},
+		{
+			"ImportPath": "github.com/stretchr/testify/require",
+			"Rev": "33a31e5dbed8302d5ab7e6d12b416e95c2c4ebc0"
 		}
 	]
 }
