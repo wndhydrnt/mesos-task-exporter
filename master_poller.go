@@ -63,10 +63,14 @@ func (e *masterPoller) retrieveCurrentMasterState() (Master, error) {
 		var master Master
 
 		err := retrieveMasterState(e.httpClient, &master, e.currentMesosMaster.String())
-		if err != nil {
-			log.Errorf("Unable to retrieve data from Mesos master '%s': %s", e.currentMesosMaster.String(), err)
+		if err == nil {
+			leaderParts := strings.Split(master.Leader, "@")
+			// Only return if the elected leader has not changed
+			if leaderParts[1] == e.currentMesosMaster.Host {
+				return master, nil
+			}
 		} else {
-			return master, nil
+			log.Errorf("Unable to retrieve data from Mesos master '%s': %s", e.currentMesosMaster.String(), err)
 		}
 	}
 

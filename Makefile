@@ -1,5 +1,5 @@
 test:
-	exit 0
+	go test . 
 
 release:
 	go get github.com/prometheus/procfs

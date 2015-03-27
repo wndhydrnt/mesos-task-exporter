@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+Bug Fixes:
+* Wrong master being polled after a leader election
+
 ## 0.1.1
 
 Bug Fixes:
