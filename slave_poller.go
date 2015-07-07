@@ -24,6 +24,7 @@ type MonitoredTask struct {
 }
 
 type Statistics struct {
+	CpusLimit          float64 `json:"cpus_limit"`
 	CpusSystemTimeSecs float64 `json:"cpus_system_time_secs"`
 	CpusUserTimeSecs   float64 `json:"cpus_user_time_secs"`
 	MemLimitBytes      int64   `json:"mem_limit_bytes"`
@@ -110,6 +111,12 @@ func slavePoller(c *http.Client, conf *Config, frameworkRegistry *frameworkRegis
 
 	constLabels := prometheus.Labels{"slave_pid": slave.Pid}
 
+	cpusLimitGauge := newGaugeVec(
+		constLabels,
+		"CPU limit of the task.",
+		"cpus_limit",
+	)
+
 	cpusSystemTimeCounter := newCounterVec(
 		constLabels,
 		"Absolute CPU sytem time.",
@@ -143,6 +150,7 @@ func slavePoller(c *http.Client, conf *Config, frameworkRegistry *frameworkRegis
 
 		err := retrieveStats(c, &monitoredTasks, slaveStatsUrl)
 		if err != nil {
+			prometheus.Unregister(cpusLimitGauge)
 			prometheus.Unregister(cpusSystemTimeCounter)
 			prometheus.Unregister(cpusUserTimeCounter)
 			prometheus.Unregister(memLimitGauge)
@@ -153,19 +161,16 @@ func slavePoller(c *http.Client, conf *Config, frameworkRegistry *frameworkRegis
 		}
 
 		for _, item := range monitoredTasks {
-			var cpusSystemTime float64
-			var cpusUserTime float64
 			var frameworkName string
-			var memLimit float64
-			var memRss float64
 			var taskName string
 
 			availableTasks[item.ExecutorId] = struct{}{}
 
-			cpusSystemTime = item.Statistics.CpusSystemTimeSecs
-			cpusUserTime = item.Statistics.CpusUserTimeSecs
-			memLimit = float64(item.Statistics.MemLimitBytes)
-			memRss = float64(item.Statistics.MemRssBytes)
+			cpusLimit := item.Statistics.CpusLimit
+			cpusSystemTime := item.Statistics.CpusSystemTimeSecs
+			cpusUserTime := item.Statistics.CpusUserTimeSecs
+			memLimit := float64(item.Statistics.MemLimitBytes)
+			memRss := float64(item.Statistics.MemRssBytes)
 
 			metric, ok := knownTasks[item.ExecutorId]
 			if ok {
@@ -194,6 +199,8 @@ func slavePoller(c *http.Client, conf *Config, frameworkRegistry *frameworkRegis
 				}
 			}
 
+			cpusLimitGauge.WithLabelValues(item.ExecutorId, frameworkName, taskName).Set(cpusLimit)
+
 			cpusSystemTimeCounter.WithLabelValues(item.ExecutorId, frameworkName, taskName).Set(cpusSystemTime)
 
 			cpusUserTimeCounter.WithLabelValues(item.ExecutorId, frameworkName, taskName).Set(cpusUserTime)
@@ -203,12 +210,13 @@ func slavePoller(c *http.Client, conf *Config, frameworkRegistry *frameworkRegis
 			memRssGauge.WithLabelValues(item.ExecutorId, frameworkName, taskName).Set(memRss)
 		}
 
-		// Remove tasks that have finished since the last check and unregister the  metrics associated with the task
+		// Remove tasks that have finished since the last check and unregister the metrics associated with the task
 		for executorId, metric := range knownTasks {
 			_, ok := availableTasks[executorId]
 			if ok == false {
 				log.Debugf("Removing finished task '%s'", executorId)
 
+				cpusLimitGauge.DeleteLabelValues(executorId, metric.frameworkName, metric.taskName)
 				cpusSystemTimeCounter.DeleteLabelValues(executorId, metric.frameworkName, metric.taskName)
 				cpusUserTimeCounter.DeleteLabelValues(executorId, metric.frameworkName, metric.taskName)
 				memLimitGauge.DeleteLabelValues(executorId, metric.frameworkName, metric.taskName)

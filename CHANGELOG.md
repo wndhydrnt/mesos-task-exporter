@@ -2,6 +2,9 @@
 
 ## 0.2.0 (unreleased)
 
+Features:
+* Record metric `mesos_task_cpus_limit`
+
 Improvements:
 * Remove calculation of `*_usage` metrics
 

@@ -13,6 +13,7 @@ Export metrics of tasks running on [Apache Mesos](http://mesos.apache.org/) for 
 
 ### Exported metrics
 
+* `mesos_task_cpus_limit`
 * `mesos_task_cpus_system_time_seconds`
 * `mesos_task_cpus_user_time_seconds`
 * `mesos_task_mem_limit_bytes`
