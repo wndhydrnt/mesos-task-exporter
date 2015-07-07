@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0 (unreleased)
+
+Improvements:
+* Remove calculation of `*_usage` metrics
+
 ## 0.1.2
 
 Bug Fixes:

@@ -32,11 +32,8 @@ type Statistics struct {
 }
 
 type taskMetric struct {
-	frameworkName              string
-	PreviousCpusSystemTimeSecs float64
-	PreviousCpusUserTimeSecs   float64
-	PreviousTimestamp          float64
-	taskName                   string
+	frameworkName string
+	taskName      string
 }
 
 func findTaskName(executorId string, framework Framework) string {
@@ -47,6 +44,22 @@ func findTaskName(executorId string, framework Framework) string {
 	}
 
 	return ""
+}
+
+func newCounterVec(constLabels prometheus.Labels, help string, name string) *prometheus.CounterVec {
+	counterVec := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			ConstLabels: constLabels,
+			Help:        help,
+			Name:        name,
+			Namespace:   namespace,
+			Subsystem:   subsystem,
+		},
+		labels)
+
+	prometheus.MustRegister(counterVec)
+
+	return counterVec
 }
 
 func newGaugeVec(constLabels prometheus.Labels, help string, name string) *prometheus.GaugeVec {
@@ -97,34 +110,16 @@ func slavePoller(c *http.Client, conf *Config, frameworkRegistry *frameworkRegis
 
 	constLabels := prometheus.Labels{"slave_pid": slave.Pid}
 
-	cpusSystemTimeGauge := newGaugeVec(
+	cpusSystemTimeCounter := newCounterVec(
 		constLabels,
 		"Absolute CPU sytem time.",
 		"cpus_system_time_seconds",
 	)
 
-	cpusUserTimeGauge := newGaugeVec(
+	cpusUserTimeCounter := newCounterVec(
 		constLabels,
 		"Absolute CPU user time.",
 		"cpus_user_time_seconds",
-	)
-
-	cpusSystemUsageGauge := newGaugeVec(
-		constLabels,
-		"Relative CPU system usage since the last query.",
-		"cpus_system_usage",
-	)
-
-	cpusTotalUsageGauge := newGaugeVec(
-		constLabels,
-		"Relative combined CPU usage since the last query.",
-		"cpus_total_usage",
-	)
-
-	cpusUserUsageGauge := newGaugeVec(
-		constLabels,
-		"Relative user CPU usage since the last query.",
-		"cpus_user_usage",
 	)
 
 	memLimitGauge := newGaugeVec(
@@ -148,11 +143,8 @@ func slavePoller(c *http.Client, conf *Config, frameworkRegistry *frameworkRegis
 
 		err := retrieveStats(c, &monitoredTasks, slaveStatsUrl)
 		if err != nil {
-			prometheus.Unregister(cpusSystemTimeGauge)
-			prometheus.Unregister(cpusSystemUsageGauge)
-			prometheus.Unregister(cpusTotalUsageGauge)
-			prometheus.Unregister(cpusUserTimeGauge)
-			prometheus.Unregister(cpusUserUsageGauge)
+			prometheus.Unregister(cpusSystemTimeCounter)
+			prometheus.Unregister(cpusUserTimeCounter)
 			prometheus.Unregister(memLimitGauge)
 			prometheus.Unregister(memRssGauge)
 
@@ -162,10 +154,7 @@ func slavePoller(c *http.Client, conf *Config, frameworkRegistry *frameworkRegis
 
 		for _, item := range monitoredTasks {
 			var cpusSystemTime float64
-			var cpusSystemUsage float64
-			var cpusTotalUsage float64
 			var cpusUserTime float64
-			var cpusUserUsage float64
 			var frameworkName string
 			var memLimit float64
 			var memRss float64
@@ -182,16 +171,6 @@ func slavePoller(c *http.Client, conf *Config, frameworkRegistry *frameworkRegis
 			if ok {
 				frameworkName = metric.frameworkName
 				taskName = metric.taskName
-
-				cpusSystemUsage = (item.Statistics.CpusSystemTimeSecs - metric.PreviousCpusSystemTimeSecs) / (item.Statistics.Timestamp - metric.PreviousTimestamp)
-
-				cpusUserUsage = (item.Statistics.CpusUserTimeSecs - metric.PreviousCpusUserTimeSecs) / (item.Statistics.Timestamp - metric.PreviousTimestamp)
-
-				cpusTotalUsage = cpusSystemUsage + cpusUserUsage
-
-				metric.PreviousTimestamp = item.Statistics.Timestamp
-				metric.PreviousCpusSystemTimeSecs = item.Statistics.CpusSystemTimeSecs
-				metric.PreviousCpusUserTimeSecs = item.Statistics.CpusUserTimeSecs
 			} else {
 				framework, err := frameworkRegistry.Get(item.FrameworkId)
 				if err != nil {
@@ -209,28 +188,15 @@ func slavePoller(c *http.Client, conf *Config, frameworkRegistry *frameworkRegis
 
 				log.Debugf("Found new task '%s'", item.ExecutorId)
 
-				cpusSystemUsage = float64(0)
-				cpusUserUsage = float64(0)
-				cpusTotalUsage = float64(0)
-
 				knownTasks[item.ExecutorId] = taskMetric{
-					frameworkName:              frameworkName,
-					PreviousTimestamp:          item.Statistics.Timestamp,
-					PreviousCpusSystemTimeSecs: item.Statistics.CpusSystemTimeSecs,
-					PreviousCpusUserTimeSecs:   item.Statistics.CpusUserTimeSecs,
-					taskName:                   taskName,
+					frameworkName: frameworkName,
+					taskName:      taskName,
 				}
 			}
 
-			cpusSystemTimeGauge.WithLabelValues(item.ExecutorId, frameworkName, taskName).Set(cpusSystemTime)
+			cpusSystemTimeCounter.WithLabelValues(item.ExecutorId, frameworkName, taskName).Set(cpusSystemTime)
 
-			cpusUserTimeGauge.WithLabelValues(item.ExecutorId, frameworkName, taskName).Set(cpusUserTime)
-
-			cpusSystemUsageGauge.WithLabelValues(item.ExecutorId, frameworkName, taskName).Set(cpusSystemUsage)
-
-			cpusUserUsageGauge.WithLabelValues(item.ExecutorId, frameworkName, taskName).Set(cpusUserUsage)
-
-			cpusTotalUsageGauge.WithLabelValues(item.ExecutorId, frameworkName, taskName).Set(cpusTotalUsage)
+			cpusUserTimeCounter.WithLabelValues(item.ExecutorId, frameworkName, taskName).Set(cpusUserTime)
 
 			memLimitGauge.WithLabelValues(item.ExecutorId, frameworkName, taskName).Set(memLimit)
 
@@ -243,11 +209,8 @@ func slavePoller(c *http.Client, conf *Config, frameworkRegistry *frameworkRegis
 			if ok == false {
 				log.Debugf("Removing finished task '%s'", executorId)
 
-				cpusSystemTimeGauge.DeleteLabelValues(executorId, metric.frameworkName, metric.taskName)
-				cpusSystemUsageGauge.DeleteLabelValues(executorId, metric.frameworkName, metric.taskName)
-				cpusTotalUsageGauge.DeleteLabelValues(executorId, metric.frameworkName, metric.taskName)
-				cpusUserTimeGauge.DeleteLabelValues(executorId, metric.frameworkName, metric.taskName)
-				cpusUserUsageGauge.DeleteLabelValues(executorId, metric.frameworkName, metric.taskName)
+				cpusSystemTimeCounter.DeleteLabelValues(executorId, metric.frameworkName, metric.taskName)
+				cpusUserTimeCounter.DeleteLabelValues(executorId, metric.frameworkName, metric.taskName)
 				memLimitGauge.DeleteLabelValues(executorId, metric.frameworkName, metric.taskName)
 				memRssGauge.DeleteLabelValues(executorId, metric.frameworkName, metric.taskName)
 

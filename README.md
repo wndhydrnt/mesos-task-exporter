@@ -14,14 +14,9 @@ Export metrics of tasks running on [Apache Mesos](http://mesos.apache.org/) for 
 ### Exported metrics
 
 * `mesos_task_cpus_system_time_seconds`
-* `mesos_task_cpus_system_usage`
-* `mesos_task_cpus_total_usage`
 * `mesos_task_cpus_user_time_seconds`
-* `mesos_task_cpus_user_usage`
 * `mesos_task_mem_limit_bytes`
 * `mesos_task_mem_rss_bytes`
-
-Metrics with the suffix `_usage` are calculated in the same way as done by the Mesos WebUI.
 
 ### Labels
 
@@ -30,7 +25,7 @@ Every metric has the following labels attached to it:
 * `executor_id` - The unique ID of the executor
 * `framework` - The name of the framework that spawned the task
 * `slave_pid` - The PID of the Mesos slave that the task is running on as exposed by the `/master/state.json` endpoint of the Mesos master
-* `task` - The name of the task
+* `task` - The name of the task as in the Mesos UI
 
 #### [Chronos](https://github.com/mesos/chronos) labels example
 
