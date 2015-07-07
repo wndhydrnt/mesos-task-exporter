@@ -54,15 +54,13 @@ Usage of ./mesos-task-exporter:
 ```
 
 ```
-# prometheus.conf
-job: {
-  name: "mesos_task_exporter"
-  scrape_interval: "15s"
+# prometheus.yml
+scrape_configs:
+  - job_name: mesos_task_exporter
+    scrape_interval: 15s
 
-  target_group: {
-    target: "http://localhost:55555/metrics"
-  }
-}
+    target_groups:
+      - targets: ['localhost:55555/metrics']
 ```
 
 ## Deployment
