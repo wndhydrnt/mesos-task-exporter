@@ -5,6 +5,8 @@
 Features:
 * Record metric `mesos_task_cpus_limit`
 * Record global task stats
+* Record resources advertised by slaves
+* Record resources used by frameworks
 
 Improvements:
 * Remove calculation of `*_usage` metrics

@@ -13,10 +13,11 @@ import (
 )
 
 type Framework struct {
-	Active bool
-	Id     string
-	Name   string
-	Tasks  []Task
+	Active        bool
+	Id            string
+	Name          string
+	Tasks         []Task
+	UsedResources Resources `json:"used_resources"`
 }
 
 type Master struct {
@@ -31,8 +32,16 @@ type Master struct {
 	Slaves        []Slave
 }
 
+type Resources struct {
+	Cpus  float64
+	Disk  float64
+	Mem   float64
+	Ports string
+}
+
 type Slave struct {
-	Pid string
+	Pid       string
+	Resources Resources
 }
 
 func (s *Slave) address() string {
@@ -48,14 +57,36 @@ type Task struct {
 type masterPoller struct {
 	config             *Config
 	currentMesosMaster *url.URL
+	frameworkResources *prometheus.GaugeVec
 	frameworkRegistry  *frameworkRegistry
 	httpClient         *http.Client
+	slaveResources     *prometheus.GaugeVec
 	tasksCounterVec    *prometheus.CounterVec
 }
 
 // Periodically queries a Mesos master to check for new slaves.
 func (e *masterPoller) run() {
 	knownSlaves := make(map[string]struct{})
+
+	e.frameworkResources = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Help:      "Resources assigned to a framework",
+			Name:      "resources",
+			Namespace: "mesos",
+			Subsystem: "framework",
+		},
+		[]string{"name", "resource", "type"})
+	prometheus.MustRegister(e.frameworkResources)
+
+	e.slaveResources = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Help:      "Resources advertised by a slave",
+			Name:      "resources",
+			Namespace: "mesos",
+			Subsystem: "slave",
+		},
+		[]string{"pid", "resource"})
+	prometheus.MustRegister(e.slaveResources)
 
 	e.tasksCounterVec = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -64,7 +95,6 @@ func (e *masterPoller) run() {
 			Namespace: "mesos",
 		},
 		[]string{"status"})
-
 	prometheus.MustRegister(e.tasksCounterVec)
 
 	e.poll(knownSlaves)
@@ -129,12 +159,20 @@ func (e *masterPoller) poll(knownSlaves map[string]struct{}) {
 	e.tasksCounterVec.WithLabelValues("started").Set(master.StartedTasks)
 
 	for _, framework := range master.Frameworks {
+		e.frameworkResources.WithLabelValues(framework.Name, "cpus", "used").Set(framework.UsedResources.Cpus)
+		e.frameworkResources.WithLabelValues(framework.Name, "disk", "used").Set(framework.UsedResources.Disk)
+		e.frameworkResources.WithLabelValues(framework.Name, "mem", "used").Set(framework.UsedResources.Mem)
+
 		e.frameworkRegistry.Set(framework)
 	}
 
 	// Start reading stats of a new slave.
 	for _, slave := range master.Slaves {
 		availableSlaves[slave.Pid] = struct{}{}
+
+		e.slaveResources.WithLabelValues(slave.Pid, "cpus").Set(slave.Resources.Cpus)
+		e.slaveResources.WithLabelValues(slave.Pid, "disk").Set(slave.Resources.Disk)
+		e.slaveResources.WithLabelValues(slave.Pid, "mem").Set(slave.Resources.Mem)
 
 		_, ok := knownSlaves[slave.Pid]
 		if ok == false {

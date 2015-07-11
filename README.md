@@ -65,6 +65,45 @@ mesos_tasks{status="staged"} 2
 mesos_tasks{status="started"} 0
 ```
 
+### Resources advertised by a Mesos slave
+
+#### Exported metrics
+
+`mesos_slave_resources`
+
+#### Labels
+
+* `pid` - The unqiue PID of the slave in the Mesos cluster
+* `resource` - The name of the resource
+
+#### Example
+
+```
+mesos_slave_resources{pid="slave(1)@10.168.1.10:5051",resource="cpus"} 2
+mesos_slave_resources{pid="slave(1)@10.168.1.10:5051",resource="disk"} 35164
+mesos_slave_resources{pid="slave(1)@10.168.1.10:5051",resource="mem"} 748
+```
+
+### Resources used by a framework
+
+#### Exported metrics
+
+`mesos_framework_resources`
+
+#### Labels
+
+* `name` - The name of the framework
+* `resource` - The name of the resource
+* `type` - The type of the metric. Currently only `used` is implemented.
+
+#### Example
+
+```
+mesos_framework_resources{name="marathon",resource="cpus",type="used"} 0.2
+mesos_framework_resources{name="marathon",resource="disk",type="used"} 0
+mesos_framework_resources{name="marathon",resource="mem",type="used"} 256
+```
+
 ## Configuration
 
 ```
