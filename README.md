@@ -11,7 +11,9 @@ Export metrics of tasks running on [Apache Mesos](http://mesos.apache.org/) for 
 
 ## Metrics
 
-### Exported metrics
+### Task
+
+#### Exported metrics
 
 * `mesos_task_cpus_limit`
 * `mesos_task_cpus_system_time_seconds`
@@ -19,7 +21,7 @@ Export metrics of tasks running on [Apache Mesos](http://mesos.apache.org/) for 
 * `mesos_task_mem_limit_bytes`
 * `mesos_task_mem_rss_bytes`
 
-### Labels
+#### Labels
 
 Every metric has the following labels attached to it:
 
@@ -28,16 +30,39 @@ Every metric has the following labels attached to it:
 * `slave_pid` - The PID of the Mesos slave that the task is running on as exposed by the `/master/state.json` endpoint of the Mesos master
 * `task` - The name of the task as in the Mesos UI
 
-#### [Chronos](https://github.com/mesos/chronos) labels example
+#### Examples
+
+[Chronos](https://github.com/mesos/chronos):
 
 ```
 mesos_task_cpus_system_time_seconds{executor_id="ct:1426247880000:0:examplejob:",framework="chronos-2.3.2_mesos-0.20.1-SNAPSHOT",slave_pid="slave(1)@10.168.1.11:5051",task="ChronosTask:examplejob"} 0.02
 ```
 
-#### [Marathon](https://github.com/mesosphere/marathon) labels example
+[Marathon](https://github.com/mesosphere/marathon):
 
 ```
 mesos_task_cpus_system_time_seconds{executor_id="com_example_redis.b8f17462-c96c-11e4-b9ff-56847afe9799",framework="marathon",slave_pid="slave(1)@10.168.1.11:5051",task="redis.example.com"} 10.71
+```
+
+### Global task stats
+
+#### Exported metrics
+
+`mesos_tasks`
+
+#### Labels
+
+`status`
+
+#### Example
+
+```
+mesos_tasks{status="failed"} 0
+mesos_tasks{status="finished"} 1
+mesos_tasks{status="killed"} 0
+mesos_tasks{status="lost"} 0
+mesos_tasks{status="staged"} 2
+mesos_tasks{status="started"} 0
 ```
 
 ## Configuration
