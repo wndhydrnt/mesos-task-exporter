@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.2.0 (unreleased)
+## 0.3.0 (unreleased)
+
+## 0.2.0
 
 Features:
 * Record metric `mesos_task_cpus_limit`
