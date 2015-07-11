@@ -4,6 +4,7 @@
 
 Features:
 * Record metric `mesos_task_cpus_limit`
+* Record global task stats
 
 Improvements:
 * Remove calculation of `*_usage` metrics

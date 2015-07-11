@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	log "github.com/Sirupsen/logrus"
+	"github.com/prometheus/client_golang/prometheus"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -19,9 +20,15 @@ type Framework struct {
 }
 
 type Master struct {
-	Frameworks []Framework
-	Leader     string
-	Slaves     []Slave
+	FailedTasks   float64 `json:"failed_tasks"`
+	FinishedTasks float64 `json:"finished_tasks"`
+	Frameworks    []Framework
+	Leader        string
+	LostTasks     float64 `json:"lost_tasks"`
+	KilledTasks   float64 `json:"killed_tasks"`
+	StagedTasks   float64 `json:"staged_tasks"`
+	StartedTasks  float64 `json:"started_tasks"`
+	Slaves        []Slave
 }
 
 type Slave struct {
@@ -43,11 +50,22 @@ type masterPoller struct {
 	currentMesosMaster *url.URL
 	frameworkRegistry  *frameworkRegistry
 	httpClient         *http.Client
+	tasksCounterVec    *prometheus.CounterVec
 }
 
 // Periodically queries a Mesos master to check for new slaves.
 func (e *masterPoller) run() {
 	knownSlaves := make(map[string]struct{})
+
+	e.tasksCounterVec = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Help:      "Cluster-wide task metrics",
+			Name:      "tasks",
+			Namespace: "mesos",
+		},
+		[]string{"status"})
+
+	prometheus.MustRegister(e.tasksCounterVec)
 
 	e.poll(knownSlaves)
 
@@ -102,6 +120,13 @@ func (e *masterPoller) poll(knownSlaves map[string]struct{}) {
 		log.Error(err)
 		return
 	}
+
+	e.tasksCounterVec.WithLabelValues("failed").Set(master.FailedTasks)
+	e.tasksCounterVec.WithLabelValues("finished").Set(master.FinishedTasks)
+	e.tasksCounterVec.WithLabelValues("killed").Set(master.KilledTasks)
+	e.tasksCounterVec.WithLabelValues("lost").Set(master.LostTasks)
+	e.tasksCounterVec.WithLabelValues("staged").Set(master.StagedTasks)
+	e.tasksCounterVec.WithLabelValues("started").Set(master.StartedTasks)
 
 	for _, framework := range master.Frameworks {
 		e.frameworkRegistry.Set(framework)
