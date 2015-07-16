@@ -2,6 +2,11 @@
 
 ## 0.3.0 (unreleased)
 
+## 0.2.1
+
+Bug Fixes:
+* Metrics of slaves and frameworks are not removed after deregistration
+
 ## 0.2.0
 
 Features:

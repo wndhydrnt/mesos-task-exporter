@@ -11,11 +11,11 @@ type frameworkRegistry struct {
 	registry map[string]Framework
 }
 
-func (fr *frameworkRegistry) Set(framework Framework) {
+func (fr *frameworkRegistry) All() map[string]Framework {
 	fr.mutex.Lock()
 	defer fr.mutex.Unlock()
 
-	fr.registry[framework.Id] = framework
+	return fr.registry
 }
 
 func (fr *frameworkRegistry) Get(id string) (Framework, error) {
@@ -28,6 +28,13 @@ func (fr *frameworkRegistry) Get(id string) (Framework, error) {
 	} else {
 		return Framework{}, errors.New(fmt.Sprintf("Unknown framwork '%s'", id))
 	}
+}
+
+func (fr *frameworkRegistry) Set(framework Framework) {
+	fr.mutex.Lock()
+	defer fr.mutex.Unlock()
+
+	fr.registry[framework.Id] = framework
 }
 
 func NewFrameworkRegistry() *frameworkRegistry {

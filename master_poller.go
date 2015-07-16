@@ -158,13 +158,7 @@ func (e *masterPoller) poll(knownSlaves map[string]struct{}) {
 	e.tasksCounterVec.WithLabelValues("staged").Set(master.StagedTasks)
 	e.tasksCounterVec.WithLabelValues("started").Set(master.StartedTasks)
 
-	for _, framework := range master.Frameworks {
-		e.frameworkResources.WithLabelValues(framework.Name, "cpus", "used").Set(framework.UsedResources.Cpus)
-		e.frameworkResources.WithLabelValues(framework.Name, "disk", "used").Set(framework.UsedResources.Disk)
-		e.frameworkResources.WithLabelValues(framework.Name, "mem", "used").Set(framework.UsedResources.Mem)
-
-		e.frameworkRegistry.Set(framework)
-	}
+	e.handleFrameworks(master.Frameworks, e.frameworkResources)
 
 	// Start reading stats of a new slave.
 	for _, slave := range master.Slaves {
@@ -188,7 +182,40 @@ func (e *masterPoller) poll(knownSlaves map[string]struct{}) {
 
 		if ok == false {
 			log.Debugf("Removing slave '%s'", knownSlave)
+
+			e.slaveResources.DeleteLabelValues(knownSlave, "cpus")
+			e.slaveResources.DeleteLabelValues(knownSlave, "disk")
+			e.slaveResources.DeleteLabelValues(knownSlave, "mem")
+
 			delete(knownSlaves, knownSlave)
+		}
+	}
+}
+
+func (e *masterPoller) handleFrameworks(frameworks []Framework, resources *prometheus.GaugeVec) {
+	knownFrameworks := e.frameworkRegistry.All()
+
+	availableFrameworks := make(map[string]struct{})
+
+	for _, framework := range frameworks {
+		e.frameworkResources.WithLabelValues(framework.Name, "cpus", "used").Set(framework.UsedResources.Cpus)
+		e.frameworkResources.WithLabelValues(framework.Name, "disk", "used").Set(framework.UsedResources.Disk)
+		e.frameworkResources.WithLabelValues(framework.Name, "mem", "used").Set(framework.UsedResources.Mem)
+
+		availableFrameworks[framework.Id] = struct{}{}
+
+		_, ok := knownFrameworks[framework.Id]
+		if ok == false {
+			e.frameworkRegistry.Set(framework)
+		}
+	}
+
+	for _, knownFramework := range knownFrameworks {
+		_, ok := availableFrameworks[knownFramework.Id]
+		if ok == false {
+			e.frameworkResources.DeleteLabelValues(knownFramework.Name, "cpus", "used")
+			e.frameworkResources.DeleteLabelValues(knownFramework.Name, "disk", "used")
+			e.frameworkResources.DeleteLabelValues(knownFramework.Name, "mem", "used")
 		}
 	}
 }
