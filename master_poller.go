@@ -204,10 +204,8 @@ func (e *masterPoller) handleFrameworks(frameworks []Framework, resources *prome
 
 		availableFrameworks[framework.Id] = struct{}{}
 
-		_, ok := knownFrameworks[framework.Id]
-		if ok == false {
-			e.frameworkRegistry.Set(framework)
-		}
+		// Always set the framework because it contains the latest information about tasks
+		e.frameworkRegistry.Set(framework)
 	}
 
 	for _, knownFramework := range knownFrameworks {

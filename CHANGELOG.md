@@ -2,6 +2,11 @@
 
 ## 0.3.0 (unreleased)
 
+## 0.2.2
+
+Bug Fixes:
+* Fix a regression introduced in 0.2.1 where new tasks are not picked up
+
 ## 0.2.1
 
 Bug Fixes:
