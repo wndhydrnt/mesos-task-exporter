@@ -101,7 +101,7 @@ func retrieveStats(c *http.Client, stats *[]MonitoredTask, url string) error {
 }
 
 // Periodically queries a Mesos slave and updates statistics of each running task
-func slavePoller(c *http.Client, conf *Config, frameworkRegistry *frameworkRegistry, slave Slave) {
+func slavePoller(c *http.Client, conf *Config, frameworkRegistry *frameworkRegistry, slave Slave, erroredSlaves *map[string]struct{}) {
 	var knownTasks map[string]taskMetric
 	var monitoredTasks []MonitoredTask
 
@@ -157,6 +157,8 @@ func slavePoller(c *http.Client, conf *Config, frameworkRegistry *frameworkRegis
 			prometheus.Unregister(memRssGauge)
 
 			log.Errorf("Error retrieving stats from slave '%s' - Stopping goroutine", slave.Pid)
+
+			(*erroredSlaves)[slave.Pid] = struct{}{}
 			return
 		}
 
