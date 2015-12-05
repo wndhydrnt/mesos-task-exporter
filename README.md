@@ -1,3 +1,6 @@
+# DEPRECATED
+This repository is now longer maintained. Please use [mesos_exporter](https://github.com/prometheus/mesos_exporter).
+
 # mesos-task-exporter
 
 Export metrics of tasks running on [Apache Mesos](http://mesos.apache.org/) for [Prometheus](http://prometheus.io/) consumption.
