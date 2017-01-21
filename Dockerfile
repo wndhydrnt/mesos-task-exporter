@@ -1,4 +1,4 @@
-FROM golang:1.4.2
+FROM golang:1.6.1
 
 RUN go get github.com/tools/godep
 
