@@ -67,6 +67,7 @@ type masterPoller struct {
 // Periodically queries a Mesos master to check for new slaves.
 func (e *masterPoller) run() {
 	knownSlaves := make(map[string]struct{})
+	erroredSlaves := make(map[string]struct{})
 
 	e.frameworkResources = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -97,12 +98,12 @@ func (e *masterPoller) run() {
 		[]string{"status"})
 	prometheus.MustRegister(e.tasksCounterVec)
 
-	e.poll(knownSlaves)
+	e.poll(knownSlaves, erroredSlaves)
 
 	t := time.Tick(e.config.MesosMasterQueryInterval)
 
 	for _ = range t {
-		e.poll(knownSlaves)
+		e.poll(knownSlaves, erroredSlaves)
 	}
 }
 
@@ -142,7 +143,7 @@ func (e *masterPoller) retrieveCurrentMasterState() (Master, error) {
 	return Master{}, errors.New("Unable to retrieve current Master state")
 }
 
-func (e *masterPoller) poll(knownSlaves map[string]struct{}) {
+func (e *masterPoller) poll(knownSlaves map[string]struct{}, erroredSlaves map[string]struct{}) {
 	availableSlaves := make(map[string]struct{})
 
 	master, err := e.retrieveCurrentMasterState()
@@ -169,10 +170,18 @@ func (e *masterPoller) poll(knownSlaves map[string]struct{}) {
 		e.slaveResources.WithLabelValues(slave.Pid, "mem").Set(slave.Resources.Mem)
 
 		_, ok := knownSlaves[slave.Pid]
-		if ok == false {
-			log.Debugf("Scraping slave '%s'", slave.Pid)
+		_, errored := erroredSlaves[slave.Pid]
+
+		if ok == false || errored != false {
+			if errored != false {
+				log.Debugf("Readding '%s' to pool of slaves to scrape", slave.Pid)
+				delete(erroredSlaves, slave.Pid)
+			} else {
+				log.Debugf("Adding '%s' to pool of slaves to scrape", slave.Pid)
+			}
+
 			knownSlaves[slave.Pid] = struct{}{}
-			go slavePoller(e.httpClient, e.config, e.frameworkRegistry, slave)
+			go slavePoller(e.httpClient, e.config, e.frameworkRegistry, slave, &erroredSlaves)
 		}
 	}
 
